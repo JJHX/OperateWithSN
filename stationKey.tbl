@@ -1,0 +1,12 @@
+# First line: station
+# S
+# STATION_NAME	COLOR	ID
+NextStation	255,255,255
+FinalStation	255,255,255
+---	51,102,255
+---	0,0,0
+1 SHL 51,102,255
+2 JJH 51,102,255
+3 HQQ 51,102,255
+4 XTS 51,102,255
+
