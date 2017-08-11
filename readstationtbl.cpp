@@ -74,10 +74,10 @@ void ReadStationTBL::readTblFile()
 
 bool ReadStationTBL::checkInclude(QString str)
 {
- if (m_stationListID.contains(str))
-     return true;
- else
-     return false;
+    if (m_stationListID.contains(str))
+        return true;
+    else
+        return false;
 }
 
 QList<QString> ReadStationTBL::checkKeyValue(QString str)
