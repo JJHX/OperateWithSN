@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QTextStream>
 #include <QDebug>
+#include <qfileinfo.h>
 WriteStationTBL::WriteStationTBL(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::WriteStationTBL)
@@ -60,7 +61,7 @@ bool WriteStationTBL::findConfigfile()
                     for ( int index =1 ; index < fields.length(); ++index)
                         m_map.insertMulti(fields.at(0),fields.at(index));
                 }
-                qDebug()<<fields;
+//                qDebug()<<fields;
             }
         }
         QString item;
@@ -77,8 +78,8 @@ bool WriteStationTBL::findConfigfile()
         for (;itr!=tmpStrLst.end();++itr)
             ui->comboBox_CarID->addItem(*itr);
 
-        qDebug()<<m_map;
-        qDebug()<<m_map.values("1");
+//        qDebug()<<m_map;
+//        qDebug()<<m_map.values("1");
     }
     m_IPFile->close();
     return true;
@@ -167,20 +168,112 @@ void WriteStationTBL::on_pushButton_CarTermDown_clicked()
 
 void WriteStationTBL::on_pushButton_Update_clicked()
 {
-//    if (    (QFile::exists("./TOD/updateSft/demoTod") &
-//             (QDir::exists("./TOD/updateSft/image"))  &
-//             (QDir::exists("./TOD/updateSft/src"))    &
-//             (QDir::exists("./TOD/updateSft/lang")))    )
-        if (    QFile::exists("./TOD/updateSft/demoTod") )
+    //! Read project name
+    //! Goto update folder which contains prgs
+    //! Take partical name to rename the new folder on display
+    //! EXP: "update_NCL1", the new folder on display would be named as "NCL1"
+    QString testPath("./test");
+    QString usbPath("/mnt/TOD");
+//    QString destPath(targetPath+projectName);
+
+    QDir updatePath(testPath);
+    if (updatePath.exists())
     {
-            system("cp -r ./TOD/updateSft/image /mnt");
-            system("cp -r ./TOD/updateSft/src /mnt");
-            system("cp -r ./TOD/updateSft/lang /mnt");
-            system("cp ./TOD/updateSft/demoTod /mnt");
+        updatePath.setFilter(QDir::AllDirs);
+
+        //Identify the update folder
+        foreach (QString str, updatePath.entryList())
+        {
+            if (str.contains("update"))
+            {
+                QStringList strList = str.split("_");
+                projectName = strList.at(1);
+                qDebug()<<"projectName"<<projectName;
+            }
+        }
+
+        //create new folder and name it as project
+        if (!QFile::exists("./"+projectName))
+            QDir().mkdir(projectName);
+        else
+        {
+        }
+
+        //copy files to target
+//        updatePath.setFilter(QDir::Files);//set filter to hide folders
+        updatePath.setFilter(QDir::AllEntries);//set filter to hide folders
+        QStringList fldContentList = updatePath.entryList();
+//        qDebug()<<"The following content are in the folder:"<<fldContentList;
+        foreach (QString str, fldContentList)
+        {
+            //skip the content start with "." ".." and the one end with "~"
+            if (str.contains(".") || str.contains("..") || str.contains("~"))
+                continue;
+//            qDebug()<<"following output shall not include . .. or ~"<< str;
+
+            //deal with directory
+            QDir isStrDir("./test/"+str);
+//            qDebug()<<"is"<<str <<"a directory?"<< isStrDir.exists();
+
+            //copy each file to destination
+            QFile destinationFile, sourceFile;
+            QDir destination("./" + projectName);
+            QString fileName(str);
+            if (!isStrDir.exists())
+            {
+
+                sourceFile.setFileName("./test/"+str);
+                destinationFile.setFileName("./"+projectName+"/"+str);
+                sourceFile.copy(destinationFile.fileName());
+            }
+
+            else
+            {
+                QDir subFolder("./test/"+str+"/");
+                subFolder.setFilter(QDir::AllEntries);
+                QStringList subFldContentList = subFolder.entryList();
+//                qDebug()<<"subfolder content:"<<subFldContentList;
+                foreach (QString subStr, subFldContentList)
+                {
+                    if (str.contains(".") || str.contains("..") || str.contains("~"))
+                        continue;
+                    sourceFile.setFileName("./test/"+str+"/"+subStr);
+                    destinationFile.setFileName("./"+projectName+"/"+subStr);
+                    sourceFile.copy(destinationFile.fileName());
+                }
+            }
+
+
+        }
     }
-    else
+
+//    else
+//    {
+//        ui->pushButton_Update->setText("Lack of files");
+//    }
+
+}
+
+bool WriteStationTBL::removeDir(const QString & directory)
+{
+    bool result = true;
+    QDir m_dir(directory);
+    if (m_dir.exists())
     {
-        ui->pushButton_Update->setText("Lack of files");
+        foreach(QFileInfo info,m_dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Files )    )
+        {
+            if (info.isDir())
+                result = removeDir(info.absoluteFilePath());
+            else
+                result = QFile::remove(info.absoluteFilePath());
+        }
     }
+
+    return result;
+}
+
+void WriteStationTBL::on_pushButton_2_clicked()
+{
+    removeDir("./NCL1");
 
 }

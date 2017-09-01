@@ -372,6 +372,19 @@
       <string>Files from USB drive will be paste into display and replace the old files. </string>
      </property>
     </widget>
+    <widget class="QPushButton" name="pushButton_2">
+     <property name="geometry">
+      <rect>
+       <x>530</x>
+       <y>190</y>
+       <width>99</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>clean</string>
+     </property>
+    </widget>
    </widget>
   </widget>
  </widget>
