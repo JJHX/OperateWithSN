@@ -173,8 +173,8 @@ void WriteStationTBL::on_pushButton_Update_clicked()
     //! Take partical name to rename the new folder on display
     //! EXP: "update_NCL1", the new folder on display would be named as "NCL1"
     QString testPath("./test");
+    QString testDestFolder("./");
     QString usbPath("/mnt/TOD");
-//    QString destPath(targetPath+projectName);
 
     QDir updatePath(testPath);
     if (updatePath.exists())
@@ -188,20 +188,25 @@ void WriteStationTBL::on_pushButton_Update_clicked()
             {
                 QStringList strList = str.split("_");
                 projectName = strList.at(1);
-                qDebug()<<"projectName"<<projectName;
+                qDebug()<<"projectName: "<<projectName;
+
+                //create new folder and name it as project
+                if (!QFile::exists("./"+projectName))
+                    QDir().mkdir(projectName);
+
+
+                //copy file over to destination folder//
+                copyFile2Dest("./test/update_NCL1","./"+projectName+"/");
+//                recurseAddDir("./test/update_NCL1","./"+projectName+"/");
+
             }
         }
+    }
+}
 
-        //create new folder and name it as project
-        if (!QFile::exists("./"+projectName))
-            QDir().mkdir(projectName);
-        else
-        {
-        }
 
-        //copy files to target
-//        updatePath.setFilter(QDir::Files);//set filter to hide folders
-        updatePath.setFilter(QDir::AllEntries);//set filter to hide folders
+/*        //!copy files to target
+        updatePath.setFilter(QDir::AllEntries);
         QStringList fldContentList = updatePath.entryList();
 //        qDebug()<<"The following content are in the folder:"<<fldContentList;
         foreach (QString str, fldContentList)
@@ -242,38 +247,118 @@ void WriteStationTBL::on_pushButton_Update_clicked()
                     sourceFile.copy(destinationFile.fileName());
                 }
             }
+*/
 
 
-        }
-    }
-
-//    else
-//    {
-//        ui->pushButton_Update->setText("Lack of files");
-//    }
-
-}
 
 bool WriteStationTBL::removeDir(const QString & directory)
-{
-    bool result = true;
+{//!This function will empty the target directory
+    qDebug()<<"Clean directory:"<<directory;
+
+    bool result = false;
     QDir m_dir(directory);
+
     if (m_dir.exists())
     {
-        foreach(QFileInfo info,m_dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Files )    )
+        foreach(QFileInfo info,m_dir.entryInfoList( QDir::NoDotAndDotDot | QDir::System | QDir::Files |  QDir::AllDirs)    )
         {
             if (info.isDir())
+            {
+                qDebug()<<"remove dir:absoluteFilePath "<< info.absoluteFilePath();
+                qDebug()<<"remove dir:absolutePath "<< info.absolutePath();
                 result = removeDir(info.absoluteFilePath());
+//                QDir().rmpath(directory);
+//                QString command("rm -r ");
+//                command.append(info.baseName());
+//                system(command.toStdString().c_str());
+            }
             else
+            {
+                qDebug()<<"remove file:"<< info.absoluteFilePath();
                 result = QFile::remove(info.absoluteFilePath());
+            }
         }
     }
-
     return result;
 }
+
+bool WriteStationTBL::copyFile2Dest(QString sourcePath, QString destPath)
+{
+    QDir sourceFolder(sourcePath);
+    QDir destinationFolder(destPath);
+    QFile destinationFile, sourceFile;
+    QString fileName;
+    bool result = false;
+    if (sourceFolder.exists())
+    {
+        foreach (QFileInfo info, sourceFolder.entryInfoList(QDir::NoDotAndDotDot | QDir::System |
+                                                            QDir::Files | QDir::AllDirs))
+        {
+            if (info.isDir())
+            {
+                //!create folder at dest?
+                qDebug()<<"Folder detected:"<< info.absoluteFilePath();
+                QString tempPath = info.baseName();
+//                tempPath.remove(0,tempPath.length()-projectName.length());
+                destinationFolder.mkdir(tempPath);
+                tempPath.append("/");
+                qDebug()<<"tempPath:"<< tempPath;
+                result = copyFile2Dest(info.absoluteFilePath(),destPath+tempPath);
+            }
+            else
+            {
+                qDebug()<<"copy: "<<info.absoluteFilePath()<<" TO: "<<destPath+info.fileName();
+                sourceFile.setFileName(info.absoluteFilePath());
+                destinationFile.setFileName(destPath+info.fileName());
+                sourceFile.copy(destinationFile.fileName());
+            }
+        }
+    }
+    return result;
+}
+
+bool WriteStationTBL::recurseAddDir(QString sourcePath, QString destPath)
+{
+    QDir sourceFolder(sourcePath);
+    QDir destinationFolder(destPath);
+    QFile destinationFile, sourceFile;
+    QString fileName;
+    bool result = false;
+    if (sourceFolder.exists())
+    {
+        foreach (QFileInfo info, sourceFolder.entryInfoList(QDir::NoDotAndDotDot | QDir::System |
+                                                            QDir::Files | QDir::AllDirs))
+        {
+//            QFileInfo fInfo(QString("%1%2").arg(sourcePath).arg(info));
+//            QString fInfo( QString("%1%2").arg(sourcePath).arg(info));
+            qDebug()<<"info.path() "<<info.path();
+            qDebug()<<"info.canonicalFilePath "<<info.canonicalFilePath();
+            qDebug()<<"info.completeSuffix() "<<info.completeSuffix();
+
+//            if (info.isDir())
+//            {
+//                //!create folder at dest?
+//                qDebug()<<"Folder detected:"<< info.absoluteFilePath();
+//                QString tempPath = info.absoluteFilePath();
+//                tempPath.remove(0,tempPath.length()-projectName.length());
+//                tempPath.append("/");
+//                qDebug()<<"tempPath:"<< tempPath;
+//                result = copyFile2Dest(info.absoluteFilePath(),destPath);
+//            }
+//            else
+//            {
+//                qDebug()<<"copy: "<<info.absoluteFilePath()<<" TO: "<<destPath+info.fileName();
+//                sourceFile.setFileName(info.absoluteFilePath());
+//                destinationFile.setFileName(destPath+info.fileName());
+//                sourceFile.copy(destinationFile.fileName());
+//            }
+        }
+    }
+    return result;
+}
+
 
 void WriteStationTBL::on_pushButton_2_clicked()
 {
     removeDir("./NCL1");
-
 }
