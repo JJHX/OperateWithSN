@@ -6,37 +6,53 @@
 #include <QTextStream>
 #include <QDebug>
 #include <qfileinfo.h>
+#include <QHostAddress>
 WriteStationTBL::WriteStationTBL(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::WriteStationTBL)
 {
 
     ui->setupUi(this);
-//    isStationFileFound=findStationKey();
-    isConfigFileFound=findConfigfile();
+    init();
+//    {
+//        updatePath.setFilter(QDir::AllDirs);
+
+//        //!Identify the update folder
+//        foreach (QString str, updatePath.entryList())
+//        {
+//            if (str.contains("update"))
+//            {
+//                QStringList strList = str.split("_");
+//                projectName = strList.at(1);
+//                qDebug()<<"projectName: "<<projectName;
+//            }
+//        }
+//    }
+
+
     ShowCurrentConfig();
 }
 
 WriteStationTBL::~WriteStationTBL()
 {
     delete ui;
+    system("umount /mnt");
 }
 
 bool WriteStationTBL::findConfigfile()
 {
 
+    system("mount /dev/sda1 /mnt");
     //load ip tbl
-    QFile *m_IPFile = new QFile("./IP.tbl");
+    QFile *m_IPFile = new QFile("/mnt/update/IP.tbl");
     if (!m_IPFile->open(QIODevice::ReadOnly))
     {
-//        ui->textBrowser_IPFilePath->setText("Not found");
-//        ui->textBrowser_IPFilePath->setStyleSheet("color:red");
+        ui->label_FileStatus->setText("IP.tbl file is missing");
+        ui->label_FileStatus->setVisible(1);
         return false;
     }
     else
     {
-//        ui->textBrowser_IPFilePath->setText(QDir::currentPath()+"/IP.tbl");
-//        ui->textBrowser_IPFilePath->setStyleSheet("color:green");
         //read config file choices for setting part
         QTextStream in(m_IPFile);
         while (!in.atEnd())
@@ -112,16 +128,16 @@ void WriteStationTBL::on_comboBox_Terminal_currentIndexChanged(const QString &ar
     }
 }
 
-void WriteStationTBL::on_pushButton_clicked()
+void WriteStationTBL::on_pushButton_Setting_Save_clicked()
 {
     //!save current setting to Todconfig and update
-    QSettings setting("tod.conf",QSettings::IniFormat);
+    QSettings setting(destinationPath+"/"+projectName+"/tod.conf",QSettings::IniFormat);
     setting.beginGroup("Communication");
     setting.setValue("TodIface0Address",ui->label_IP_eth0->text().remove(0,6));
     setting.setValue("TodIface1Address",ui->label_IP_eth1->text().remove(0,6));
-    setting.setValue("TodNetmask",ui->label_currentSubnet->text().remove(0,9));
-    setting.setValue("TodPort",ui->label_currentTodPort->text().remove(0,9));
-    setting.setValue("TodId",ui->label_currentTodID->text().remove(0,7));
+//    setting.setValue("TodNetmask",ui->label_currentSubnet->text().remove(0,9));
+//    setting.setValue("TodPort",ui->label_currentTodPort->text().remove(0,9));
+//    setting.setValue("TodId",ui->label_currentTodID->text().remove(0,7));
     ShowCurrentConfig();
 }
 
@@ -129,13 +145,25 @@ void WriteStationTBL::ShowCurrentConfig()
 {
     //!load tod.conf and display orignal settings
 //    QSettings m_TodSetting("/mnt/TOD/tod.conf", QSettings::IniFormat);
-    QSettings m_TodSetting("tod.conf", QSettings::IniFormat);
-    m_TodSetting.beginGroup("Communication");
-    ui->label_currentEth0->setText("Eth0: " + m_TodSetting.value("TodIface0Address").toString());
-    ui->label_currentEth1->setText("Eth1: " + m_TodSetting.value("TodIface1Address").toString());
-    ui->label_currentSubnet->setText("NetMask: " + m_TodSetting.value("TodNetmask").toString());
-    ui->label_currentTodID->setText("TodID: " + m_TodSetting.value("TodId").toString());
-    ui->label_currentTodPort->setText("TodPort: " + m_TodSetting.value("TodPort").toString());
+    QString todPath(destinationPath);
+    if (todPath.end() != "/")
+        todPath.append("/"+projectName+"/tod.conf");
+    if (QFile::exists(todPath))
+    {
+        ui->label_todFileStatus->setVisible(0);
+        QSettings m_TodSetting(destinationPath+"/"+projectName+"/tod.conf", QSettings::IniFormat);
+        m_TodSetting.beginGroup("Communication");
+        ui->label_currentEth0->setText("Eth0: " + m_TodSetting.value("TodIface0Address").toString());
+        ui->label_currentEth1->setText("Eth1: " + m_TodSetting.value("TodIface1Address").toString());
+        ui->label_currentSubnet->setText("NetMask: " + m_TodSetting.value("TodNetmask").toString());
+        ui->label_currentTodID->setText("TodID: " + m_TodSetting.value("TodId").toString());
+        ui->label_currentTodPort->setText("TodPort: " + m_TodSetting.value("TodPort").toString());
+    }
+    else
+    {
+        ui->label_todFileStatus->setVisible(1);
+        ui->label_todFileStatus->setText("tod.conf not found");
+    }
 }
 
 void WriteStationTBL::on_pushButton_CarIDUp_pressed()
@@ -168,40 +196,22 @@ void WriteStationTBL::on_pushButton_CarTermDown_clicked()
 
 void WriteStationTBL::on_pushButton_Update_clicked()
 {
-    //! Read project name
-    //! Goto update folder which contains prgs
-    //! Take partical name to rename the new folder on display
+
+    //!create new folder and name it as project
     //! EXP: "update_NCL1", the new folder on display would be named as "NCL1"
-    QString testPath("./test");
-    QString testDestFolder("./");
-    QString usbPath("/mnt/TOD");
 
-    QDir updatePath(testPath);
-    if (updatePath.exists())
-    {
-        updatePath.setFilter(QDir::AllDirs);
-
-        //Identify the update folder
-        foreach (QString str, updatePath.entryList())
-        {
-            if (str.contains("update"))
-            {
-                QStringList strList = str.split("_");
-                projectName = strList.at(1);
-                qDebug()<<"projectName: "<<projectName;
-
-                //create new folder and name it as project
-                if (!QFile::exists("./"+projectName))
-                    QDir().mkdir(projectName);
+    if (!QFile::exists(destinationPath+projectName))
+        QDir().mkdir(projectName);
 
 
-                //copy file over to destination folder//
-                copyFile2Dest("./test/update_NCL1","./"+projectName+"/");
-//                recurseAddDir("./test/update_NCL1","./"+projectName+"/");
+    //!copy file over to destination folder//
+    //                copyFile2Dest("./test/update_NCL1","./"+projectName+"/");
+    if (copyFile2Dest(prjTargetPath,destinationPath+projectName+"/") )
+        ui->pushButton_Update->setText("DONE");
+    else
+        ui->pushButton_Update->setText("ERROR");
 
-            }
-        }
-    }
+
 }
 
 
@@ -252,7 +262,7 @@ void WriteStationTBL::on_pushButton_Update_clicked()
 
 
 bool WriteStationTBL::removeDir(const QString & directory)
-{//!This function will empty the target directory
+{//!This function will empty the target directory and items under that directory
     qDebug()<<"Clean directory:"<<directory;
 
     bool result = false;
@@ -265,19 +275,18 @@ bool WriteStationTBL::removeDir(const QString & directory)
             if (info.isDir())
             {
                 qDebug()<<"remove dir:absoluteFilePath "<< info.absoluteFilePath();
-                qDebug()<<"remove dir:absolutePath "<< info.absolutePath();
+//                qDebug()<<"remove dir:absolutePath "<< info.absolutePath();
                 result = removeDir(info.absoluteFilePath());
-//                QDir().rmpath(directory);
-//                QString command("rm -r ");
-//                command.append(info.baseName());
-//                system(command.toStdString().c_str());
             }
             else
             {
                 qDebug()<<"remove file:"<< info.absoluteFilePath();
                 result = QFile::remove(info.absoluteFilePath());
             }
+            if (!result)
+                return result;
         }
+        result = m_dir.rmdir(directory);
     }
     return result;
 }
@@ -357,8 +366,121 @@ bool WriteStationTBL::recurseAddDir(QString sourcePath, QString destPath)
     return result;
 }
 
-
-void WriteStationTBL::on_pushButton_2_clicked()
+bool WriteStationTBL::rawClean(QString targetPath)
 {
-    removeDir("./NCL1");
+    QString command("rm -r ");
+    command.append(targetPath);
+    QByteArray ba = command.toLatin1();
+    const char * c_str2 = ba.data();
+    system(c_str2);
+    return 1;
+}
+
+bool WriteStationTBL::changeInitialSetting()
+{
+    //! this function will modify the 99xinit-mft file on MFT display
+    //! according to the new project name
+    //! correct path shall place into file
+    QString Xinit_path("/etc/X11/Xinit.d/99xinit-mft");
+    QFile m_data(Xinit_path);
+    m_data.open(QIODevice::Text | QIODevice::ReadWrite);
+    QString dataText = m_data.readAll();
+
+
+}
+
+//bool WriteStationTBL::setHostAddress(QString ipAddress, QString netMask)
+//{
+//    bool result;
+//    result = QHostAddress::setAddress(ipAddress);
+//    return result;
+//}
+
+//bool WriteStationTBL::setHostAddress()
+//{
+//    bool result;
+//    OWS_setting->beginGroup("Default");
+//    if (OWS_setting->value("testMode") == 1)
+//    {
+//        QString m_ipAddr=OWS_setting->value("testIpAddress");
+//        QString m_netMask=OWS_setting->value("testNetMask");
+//        QHostAddress::setAddress(m_ipAddr);
+//    }
+//    return result;
+
+//}
+
+
+void WriteStationTBL::on_pushButton_clean_clicked()
+{
+
+    removeDir(destinationPath+projectName);
+    QDir target(destinationPath);
+    foreach (QFileInfo info, target.entryInfoList(QDir::NoDotAndDotDot | QDir::AllDirs) )
+    {
+        if (info.isDir())
+            if(info.baseName()!= "OperateWithSN")
+                removeDir(info.absoluteFilePath());
+    }
+
+}
+
+bool WriteStationTBL::init()
+{
+    ui->label_FileStatus->setVisible(0);
+    isConfigFileFound=findConfigfile();
+    if (QFile::exists("/mnt/OWS.conf"))
+    {
+        OWS_setting = new QSettings("/mnt/OWS.conf",QSettings::IniFormat);
+        OWS_setting->beginGroup("Settings");
+        sourcePath=OWS_setting->value("sourcePath").toString();
+        destinationPath=OWS_setting->value("destinationPath").toString();
+        qDebug()<<"sourcePath:"<<sourcePath;
+        qDebug()<<"destinationPath:"<<destinationPath;
+//        OWS_setting->beginGroup("Default");
+//        if (OWS_setting->value("testMode") == 1)
+//        {
+//            QString m_ipAddr=OWS_setting->value("testIpAddress");
+//            QString m_netMask=OWS_setting->value("testNetMask");
+//            QHostAdd
+
+//        }
+
+    }
+    else
+    {
+        ui->label_FileStatus->setText("OWS.conf is missing from USB stick");
+        ui->label_FileStatus->isVisible();
+        ui->pushButton_Setting_Save->setDisabled(1);
+        ui->pushButton_clean->setDisabled(1);
+        ui->pushButton_Update->setDisabled(1);
+        ui->pushButton_clean->setDisabled(1);
+        ui->pushButton_CarIDDown->setDisabled(1);
+        ui->pushButton_CarIDUp->setDisabled(1);
+        ui->pushButton_CarTermDown->setDisabled(1);
+        ui->pushButton_CarTermUp->setDisabled(1);
+    }
+
+    //configure update_#PROJECT_NAME folder
+    QDir m_dir(sourcePath);
+    foreach (QFileInfo info, m_dir.entryInfoList(QDir::NoDotAndDotDot | QDir::AllDirs))
+    {
+        if (info.isDir())
+            if (info.baseName().contains("_"))
+            {
+                qDebug()<<"info.baseName: "<<info.baseName();
+                projectName = info.baseName().remove(0,7);
+                qDebug()<<"projectName: "<<projectName;
+                prjTargetPath=sourcePath+info.baseName();
+                qDebug()<<"prjTargetPath"<<prjTargetPath;
+
+            }
+    }
+
+    return 1;
+}
+
+void WriteStationTBL::on_pushButton_flash_clicked()
+{
+    ShowCurrentConfig();
 }

@@ -130,7 +130,7 @@
     </rect>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>1</number>
    </property>
    <widget class="QWidget" name="TabConfig">
     <attribute name="title">
@@ -291,8 +291,8 @@
      <widget class="QPushButton" name="pushButton_Setting_Save">
       <property name="geometry">
        <rect>
-        <x>550</x>
-        <y>250</y>
+        <x>520</x>
+        <y>220</y>
         <width>121</width>
         <height>61</height>
        </rect>
@@ -435,22 +435,6 @@ font: 57 italic 18pt &quot;Ubuntu&quot;;</string>
  <connections>
   <connection>
    <sender>buttonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>WriteStationTBL</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>157</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>buttonBox</sender>
    <signal>rejected()</signal>
    <receiver>WriteStationTBL</receiver>
    <slot>reject()</slot>
@@ -461,6 +445,22 @@ font: 57 italic 18pt &quot;Ubuntu&quot;;</string>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>WriteStationTBL</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>248</x>
+     <y>254</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
      <y>274</y>
     </hint>
    </hints>
